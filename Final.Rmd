@@ -1,0 +1,409 @@
+---
+title: "FINAL PROJECT"
+output:
+  pdf_document: default
+  html_document: default
+Author: 'vida Tayebati'
+---
+
+Introduction:
+In this project I am exploring the Data Science and Stem Salaries Data set which is published on Kaggle:
+https://www.kaggle.com/datasets/jackogozaly/data-science-and-stem-salaries
+
+
+My goal is to suggest different possible paths that can be taken in the field of data science and computer science in the US.
+This project is targeted toward college students like my self. As a college student majoring in data science, who is an immigrant in the US. I have very limited understanding of different paths that can be taken in the field of data science and software.
+What motivated me to work on this specific data set is because we all heard of opportunities that exists at companies like Google, Facebook, IBM or banks like Goldman Saks.However, to start exploring these opportunities, my first question is whether these opportunities are the same or not? 
+ 
+```{r}
+
+#Author: 'vida Tayebati'
+setwd("~/Downloads")
+df <- read.csv("Levels_Fyi_Salary_Data.csv")
+
+library(lubridate)
+head(df)
+
+# data exploration 
+dim(df)
+colnames(df)
+
+# drop the duplicates 
+df <- unique(df)
+dim(df)
+colnames(df)
+```
+This Data set includes  62,642 salary records from top companies in the US like Google, Facebook, IBM and etc.
+It also contains 29 categories such as titles,education level, compensation (base salary, bonus, stock grants), race, and more.
+
+
+```{r}
+
+summary(df$basesalary)
+summary(df$totalyearlycompensation)
+summary(mdy_hms(df$timestamp))
+
+
+```
+
+This data set is from 2017 to 2021.I believe it is important to work on a data set that is recent since the changes in tech companies can be very high speed.
+
+Here we can see that the average base salary of working in these companies is about $137.000.00. while the average of total compensation is around $216.000.00. So lets expplore what are the other factors that affects one's total compensation!
+
+
+
+
+```{r}
+
+sort(table(df$company), decreasing =TRUE)[1:150]
+
+sort(table(df$company), decreasing =TRUE)[1:51]
+
+```
+
+Looking at the ordered list of companies, we observe that in many of the companies  we only have few observations. Therefore, to avoid any over fitting in our model, it is better to choose a cut off for the number of employees. The cut off is now for companies with at least has 150 employees.
+
+Then I decided to divide these companies to 4 main groups of FAANG, UNICORN, Legacy and banks to offer 4 different paths. Companies in each group are similar to each other either in terms of what they are offering or their level of performance. 
+Although,FAANG companies are known as 5 major tech companies of Amazon,Google,Facebook,Apple and Netflix, I added Microsoft to this group as well because of the similarity in performance between Microsoft and the other companies at this group.
+Legacy group contains companies like IBM, which have a long history in tech.
+Unicorn groups contains private companies which their values are rising.
+Banks includes of banks and also companies which deals with currency.
+
+The list of the groupsin details are below:
+
+1-faang: amazon, microsoft,google,facebook,apple,netflix
+2-unicorn: uber,twitter, nvidia, lyft, dropbox, shopify, airbnb,snap,indeed,yelp,square,tesla,stripe,splunk,
+3-legacy_software: oracle,salesforce,intel,cisco,IBM,Qualcomm, adobe, sap, del, atlassian,servicNow,bloomberg 
+4-banks: capitalOne, jpmorganchase, goldmansachs, paypal,intuit,deloitte,visa
+
+Then I decided to divide these companies to 4 main groups of faang, Unicorn, Legacy and banks.
+
+faang: amazon, microsoft,google,facebook,apple,netflix
+
+legacy_software: oracle,salesforce,intel,cisco,IBM,Qualcomm, adobe, sap, del, atlassian,servicNow,bloomberg 
+
+banks: capitalOne, jpmorganchase, goldmansachs, paypal,intuit,deloitte,visa
+
+unicorn: uber,twitter, nvidia, lyft, dropbox, shopify, airbnb,snap,indeed,yelp,square,tesla,stripe,splunk,
+
+```{r}
+
+#4 new features of faang, unicorn, bank and legacy are now added on the data set
+
+
+df$faang<- tolower(df$company) %in% c("amazon", "microsoft", "google", "facebook", "apple","netflix")
+
+df$legacy<- tolower(df$company) %in% c("oracle","salesforce","intel","cisco","ibm","qualcomm", "adobe", "sap", "del", "atlassian","servicnow","bloomberg")
+
+df$bank<- tolower(df$company) %in% c("capital one", "jpmorgan chase", "goldman sachs", "paypal","intuit","deloitte","visa")
+
+df$unicorn<- tolower(df$company) %in% c("uber","twitter", "nvidia", "lyft", "dropbox", "shopify", "airbnb","snap","indeed","yelp","square","tesla","stripe","splunk")
+
+
+df$keep<-(df$faang+ df$legacy+ df$bank+ df$unicorn)
+
+```
+
+
+```{r}
+library(gtools)
+library(class)
+
+#created a factor for which of the companies people work for (categorize the companies in different types)
+
+mat <- as.matrix(df[,30:33])%*%c(1:4)+1
+company_type<- c("other", "faang", "legacy", "bank", "unicorn")
+df$company2<- factor(company_type[mat])
+
+
+```
+
+
+
+Lets observe the difference between different features in these 4 groups:
+
+```{r}
+
+mean(df$basesalary[df$unicorn])
+mean(df$basesalary[df$faang])
+mean(df$basesalary[df$bank])
+mean(df$basesalary[df$legacy])
+
+
+```
+We can see that the average base salary in faang and unicorn companies are very close in the range of 145000.0 to 156000.0.
+While the base salary for the banks and legacy groups are much lower compared to those. Their range are from 125000.0 to 138000.00.
+Let's note that this is only the average of base salary, without considering bonus and stock which are two critical factors affecting employees total compensations in these companies.
+
+
+```{r}
+
+mean(df$stockgrantvalue[df$unicorn])
+mean(df$stockgrantvalue[df$faang])
+mean(df$stockgrantvalue[df$bank])
+mean(df$stockgrantvalue[df$legacy])
+
+
+boxplot(stockgrantvalue ~ company2, data=df)
+
+```
+The average of the stock price in Faang companies and Unicorn are much higher than the other two. The average for Faang's are 109000.0 and Unicorn's are around 74000.0. It seems that bank are not offering that much of stock values to their employees.
+
+
+
+```{r}
+mean(df$bonus[df$unicorn])
+mean(df$bonus[df$faang])
+mean(df$bonus[df$bank])
+mean(df$bonus[df$legacy])
+
+boxplot(bonus ~ company2, data=df)
+
+```
+In terms of bonus offered in these companies, it seems that average bonus value in all 4 groups are very close. Unicorn group has the higher average and Faang has the lowest.
+
+
+
+```{r}
+library(ggplot2)
+mean(df$totalyearlycompensation[df$unicorn])
+mean(df$totalyearlycompensation[df$faang])
+mean(df$totalyearlycompensation[df$bank])
+mean(df$totalyearlycompensation[df$legacy])
+
+
+```
+
+ we can see that although the average of base salary in the faang companies are higher than Unicorn companies, the average total compensation the average of total compensation for Unicorn companies seems to be higher. 
+That means that Unicorn companies on average offer higher bonus and stock values. 
+
+listing out the companies with the highest median stock grants that had at least 100 employees.
+```{r}
+library(dplyr)
+df%>%group_by(company)%>%summarise(ms=median(stockgrantvalue),n=n())%>%filter(n>100)%>%arrange(desc(ms))
+
+```
+the median of stock value offered in companies in a decreasing order. Most of these companies are part of the Unicorn group.
+
+
+using k-means to cluster for these 4 groups based on base salary and stock grant value
+```{r}
+
+df3<- df[df$company2 !="other",c(5,7:8, 10:12,35,29) ]
+km1<-kmeans(df3[,4:5],4)
+df3$group<-km1$cluster
+
+
+library(ggplot2)
+df2<-df[(df$keep==1),c(7:8, 10:11)]
+ggplot()+geom_point(data=df3, mapping = aes(x=basesalary, y=stockgrantvalue, color=group))
+ggplot()+geom_point(data=df3, mapping = aes(x=basesalary, y=stockgrantvalue, color=company2))
+
+```
+
+So now the question could be whether it is better to work for faang companies with higher base salary or at Unicoron companies with higher stock & bonus values.
+We know that companies like Google were a Unicorn company before they go public. Therefore, it is important to consider that if any of these Unicorn companies go public, then the value of their stock will also rise. But here the question is whether somebody would take a risk of choosing a job at Unicorn companies with a higher stock value or prefer a more stable path with higher base salary at faang companies.
+
+
+
+
+```{r}
+
+mean(df$yearsofexperience[df$unicorn])
+mean(df$yearsofexperience[df$faang])
+mean(df$yearsofexperience[df$bank])
+mean(df$yearsofexperience[df$legacy])
+
+ggplot(df, aes(x=yearsofexperience, y=basesalary, color=company2))+geom_smooth(method="loess")
+
+```
+
+The average years of experience in most companies are between 6 to 8 years.
+
+
+Unidng k-means to clusters for these 4 groups.
+```{r}
+km2<-kmeans(df3[,2:3],4)
+df3$group2<-km2$cluster
+
+ggplot()+geom_point(data=df3, mapping = aes(x=yearsofexperience, y=yearsatcompany, color=company2))
+
+```
+It is hard to make clear conclusion based on these k-means clusters. However, we can see that there more experienced people at both faang groups and legacy groups.While banks which are in red are more spread out. Unicorns are more concentrated toward the left side which is less experienced people.
+
+
+
+
+Lets look at the level of education 
+```{r}
+# Education at faang companies
+table(df$faang, df$Bachelors_Degree)
+sum(df$faang)
+table(df$faang, df$Bachelors_Degree)/rowSums(table(df$faang, df$Bachelors_Degree))
+table(df$faang, df$Masters_Degree)/rowSums(table(df$faang, df$Masters_Degree))
+table(df$faang, df$Doctorate_Degree)/rowSums(table(df$faang, df$Doctorate_Degree))
+
+```
+
+There are 23121 people work at faang companies.
+In per portion, 0.17%  of people who work at faang have a BA degree, 0.24% of people have a Masters degree and 0.03% have a P.H.D degree.
+This shows that the rate of acceptance for Master's levels graduates are much higher in the Faang companies like Google comparing to a P.H.D degree.
+
+```{r}
+# Education at unicron companies
+table(df$unicorn, df$Bachelors_Degree)/rowSums(table(df$unicorn, df$Bachelors_Degree))
+table(df$unicorn, df$Masters_Degree)/rowSums(table(df$unicorn, df$Masters_Degree))
+table(df$unicorn, df$Doctorate_Degree)/rowSums(table(df$unicorn, df$Doctorate_Degree))
+
+```
+In per portion, 0.17%  of people who work at Unicorn have a BA degree, 0.21% of people have a Masters degree and 0.03% have a P.H.D degree.
+This is very similar to the Faang group.
+
+
+
+
+```{r}
+# Education at bank companies
+
+table(df$bank, df$Bachelors_Degree)/rowSums(table(df$bank, df$Bachelors_Degree))
+table(df$bank, df$Masters_Degree)/rowSums(table(df$bank, df$Masters_Degree))
+table(df$bank, df$Doctorate_Degree)/rowSums(table(df$bank, df$Doctorate_Degree))
+
+```
+In per portion, 0.25%  of people who work at bank group have a BA degree, 0.25% of people have a Masters degree and 0.01% have a P.H.D degree.
+The lever of acceptance for P.H.D levels in Banks are much lower compared to the Faang and unicorns.
+
+
+
+
+```{r}
+# Education at Legacy companies
+
+table(df$legacy, df$Bachelors_Degree)/rowSums(table(df$legacy, df$Bachelors_Degree))
+table(df$legacy, df$Masters_Degree)/rowSums(table(df$legacy, df$Masters_Degree))
+table(df$legacy, df$Doctorate_Degree)/rowSums(table(df$legacy, df$Doctorate_Degree))
+
+```
+
+In per portion, 0.17%  of people who work at bank group have a BA degree, 0.28% of people have a Masters degree and 0.02% have a P.H.D degree.
+The lever of acceptance for BA. levels in Legacy companies are much lower compared to the rest of the groups.
+
+
+```{r}
+df4<-df[(df$keep==1),c(7:8, 10:11, 29)]
+df4$company2<-df3$company2
+ggplot(df4, aes(x=Education, y=basesalary, color=company2, alpha=0.1))+geom_jitter()
+
+
+
+table(df4$company2, df4$Education)
+```
+ 
+Assuming there are 4 different paths based on 4 groups of Faang, unicorn, legacy and banks. We learned so far that on average base salary in faang companies are higher where as total compensation on average for Unicorn are higher. 
+In addition it seems, that the rate of acceptance for BA degrees are higher in Bank and Unicorn, on the other hand the rate of P.H.D acceptance at Fanng companies are much higher. In another word, it means that out of 20 people working in Bank group, only one has a P.H.D while out of 20 people working at Faang, 3 to 4 people have a P.H.D.
+
+In terms of level of education: Can we say that the first job out of college  with a BA degree could be at bank's with a lower salary.But if the person is looking for more of a prestigious job at Faang companies, perhaps they need a Master's or P.H.D degree
+
+In terms of salaries: Let's consider two different student, a  22 years old graduated from Columbia University who wants to take risk and perhaps to get richer in a faster way, there is an option for them to work at Unicorn companies, considering that the Unicorn companies have a potential to go public and in that sense their stock values will extremely rise. Please note that the base salary on average for the Unicorns are lower compared to the Faang's.
+Now let's say that the second person is a graduate P.H,D student who perhaps worked for a $20 hourly paid job for the last 5 years of your study and perhaps have a family, then perhaps working at Faang companies are more advised since it is a more stable path. 
+let's not forget that these stories only examples and varies from person to person depends on what they are looking for and where they are standing in terms of their level of education, intereset, years of experience, and etc.
+
+
+
+
+
+
+
+
+Here I divided my data set to  train data set for 28142 employees and test data set for 9381 employees.
+I am using the KNN model to see how well my model can predict which type of company people work for.
+```{r}
+
+
+df3<- df[df$company2 !="other",c(5,7:8, 10:12,35,29) ]
+train.index<-sample(1:37523, round(.75*37523))
+train<-df3[train.index,]
+test<-df3[-train.index,]
+
+
+kn1<-knn(train = train[,-(7:8)],test = test[,-(7:8)], cl=train[, 7])
+mean(kn1==test[,7])
+#60 right
+acc.knn<- rep(0, 5)
+ks<- c(10,25,50,100,500)
+for (i in 1:5) {
+  
+kn2<-knn(train = train[,-(7:8)],test = test[,-(7:8)], cl=train[, 7])
+acc.knn[i]<-mean(kn2==test[,7])
+}
+
+
+sum((table(df3$company2)/sum(table(df3$company2)))^2)
+
+
+
+```
+The KNN model predict right for 62 % in which companies people work for. This model does an ok job. Because if we predict ourselves we can can predict only for 43%.
+ 
+ 
+
+
+I did a k means for these four groups to find clusters however, I didnt find clear clusters to correspond.
+Then I used a KNN  model with a accuracy of 60%.
+That is why at the end I am doing k-means to find the best clusters to see if it suggest me another way to group the possible paths. 
+
+```{r}
+#Elbow Method for finding the optimal number of clusters
+set.seed(123)
+# Compute and plot wss for k = 2 to k = 15.
+k.max <- 20
+data <- df3[,2:5]
+wss <- sapply(1:k.max, 
+              function(k){kmeans(data, k, nstart=1,iter.max = 15 )$tot.withinss})
+wss
+plot(1:k.max, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+
+```
+In the begging I assumed there are 4 groups which of faang, unicorn, legacy and banks.
+After running k-means to find the best clusters, we can say that there are 6 different paths 
+
+```{r}
+library(ggplot2)
+km6<-kmeans(df3[,2:5],6)
+
+
+
+#PCA
+pca<-prcomp(df3[,2:5])
+ggplot()+geom_point(mapping = aes(x=pca$x[,1], y=pca$x[,2], color=km6$cluster))
+
+```
+I used PCA but its dificlut to do visualization for 4 variable on 2 principal components.
+
+```{r}
+km6$centers
+
+```
+
+This K- means model offers 6 groups instead of the initial 4 groups that we assumed in the begging.
+
+
+In conclusion:
+
+My goal was to shed light on different opportunities at various companies in the US. for those who are interested in the field of data science and software. Although this can be varies from person to person, I hope that people with different level of education, experience and interest can find their path by looking at this data.
+
+We can interpret 6 groups:
+
+1-In group one we can see people with alot of years of experience and high base salary and lower stock value.
+2 Group two is also similar to one, but with more in stock value, perhaps this group are in their mid-late career and are highly compensated
+3- Group three are more experienced than group one but with less base salary and higher stock value compared to group one. 
+4- Group four are those in their early career with lower base salary and low stock value.
+5- Group 5 is very similar to group 4, however the base salary in this group compared to group four is much higher, this can be an average person at facebook or Google
+6- last group: This is people level 8 who makes a very high salary and high stock value.
+
+
+
